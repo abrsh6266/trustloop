@@ -67,3 +67,21 @@ function serializeAgreementSummary(agreement: {
     failedObligationsCount,
   };
 }
+
+export function computeAgreementStatus(
+  statuses: ObligationStatus[],
+): AgreementStatus {
+  if (statuses.some((status) => status == "FAILED")) {
+    return "FAILED";
+  }
+
+  if (statuses.length > 0 && statuses.every((status) => status === "DONE")) {
+    return "COMPLETED";
+  }
+
+  return "PENDING";
+}
+
+function unqueValues(values: string[]) {
+  return Array.from(new Set(values));
+}
