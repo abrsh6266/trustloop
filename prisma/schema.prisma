@@ -1,0 +1,115 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+enum AgreementStatus {
+    PENDING
+    COMPLETED
+    FAILED
+}
+
+enum Participantole {
+    CREATOR
+    PARTICIPANT
+}
+
+enum ObligationStatus {
+    PENDING
+    DONE
+    FAILED
+}
+
+enum ActivityAction {
+    CREATED
+    UPDATED
+    COMPLETED
+    FAILED
+}
+
+model User {
+    id                    String                  @id @db.Uuid
+    email                 String                  @unique
+    name                  String?
+    trustScore            Float                   @default(100) @map("trust_score")
+    createdAt             DateTime                @default(now()) @map("created_at")
+    updatedAt             DateTime                @updatedAt @map("updated_at")
+    agreements            Agreement[]
+    agreementParticipants AgreementParticipants[]
+    agreements            Agreement[]
+    obligations           Obligation[]
+    activityLogs          ActivityLog[]
+
+    @@map("users")
+}
+
+model Agreement {
+    id                    String                  @id @default(cuid())
+    title                 String
+    description           String
+    createdById           String
+    createdBy             User                    @relation("CreatedAgreements", fields: [createdById], references: [id], onDelete: Cascade)
+    createdAt             DateTime                @default(now()) @map("created_at")
+    updatedAt             DateTime                @updatedAt @map("updated_at")
+    dueDate               DateTime                @map("due_date")
+    status                AgreementStatus         @default(PENDING) @map("status")
+    user                  User?                   @relation(fields: [userId], references: [id])
+    userId                String?                 @db.Uuid
+    agreementParticipants AgreementParticipants[]
+    obligations           Obligation[]
+    activityLogs          ActivityLog[]
+
+    @@index([createdById])
+    @@index([status])
+    @@map("agreements")
+}
+
+model AgreementParticipants {
+    id          String         @id @default(cuid())
+    agreementId String
+    userId      String
+    role        Participantole @default(PARTICIPANT)
+    createdAt   DateTime       @default(now()) @map("created_at")
+    updatedAt   DateTime       @updatedAt @map("updated_at")
+    agreement   Agreement      @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+    user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([agreementId, userId])
+    @@index([userId])
+    @@map("agreement_participants")
+}
+
+model Obligation {
+    id           String           @id @default(cuid())
+    agreementId  String           @map("agreement_id")
+    assignedToId String           @map("assigned_to_id")
+    description  String
+    status       ObligationStatus @default(PENDING)
+    createdAt    DateTime         @default(now()) @map("created_at")
+    updatedAt    DateTime         @updatedAt @map("updated_at")
+    agreement    Agreement        @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+    assignedTo   User             @relation(fields: [assignedToId], references: [id], onDelete: Cascade)
+
+    @@index([agreementId])
+    @@index([assignedToId])
+    @@map("obligations")
+}
+
+model ActivityLog {
+    id          String         @id @default(cuid())
+    agreementId String         @map("agreement_id")
+    action      ActivityAction
+    userId      String         @map("user_id")
+    details     String?
+    timestamp   DateTime       @default(now())
+    agreement   Agreement      @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+    user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([agreementId])
+    @@index([userId])
+    @@map("activity_logs")
+}
