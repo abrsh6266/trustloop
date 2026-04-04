@@ -13,7 +13,7 @@ enum AgreementStatus {
     FAILED
 }
 
-enum Participantole {
+enum ParticipantRole {
     CREATOR
     PARTICIPANT
 }
@@ -32,53 +32,49 @@ enum ActivityAction {
 }
 
 model User {
-    id                    String                  @id @db.Uuid
-    email                 String                  @unique
-    name                  String?
-    trustScore            Float                   @default(100) @map("trust_score")
-    createdAt             DateTime                @default(now()) @map("created_at")
-    updatedAt             DateTime                @updatedAt @map("updated_at")
-    agreements            Agreement[]
-    agreementParticipants AgreementParticipants[]
-    agreements            Agreement[]
-    obligations           Obligation[]
-    activityLogs          ActivityLog[]
+    id                  String                 @id @db.Uuid
+    email               String                 @unique
+    name                String?
+    trustScore          Float                  @default(100) @map("trust_score")
+    createdAt           DateTime               @default(now()) @map("created_at")
+    updatedAt           DateTime               @updatedAt @map("updated_at")
+    agreementsCreated   Agreement[]            @relation("CreatedAgreements")
+    agreementMembers    AgreementParticipant[]
+    assignedObligations Obligation[]           @relation("AssignedObligations")
+    activityLogs        ActivityLog[]
 
     @@map("users")
 }
 
 model Agreement {
-    id                    String                  @id @default(cuid())
-    title                 String
-    description           String
-    createdById           String
-    createdBy             User                    @relation("CreatedAgreements", fields: [createdById], references: [id], onDelete: Cascade)
-    createdAt             DateTime                @default(now()) @map("created_at")
-    updatedAt             DateTime                @updatedAt @map("updated_at")
-    dueDate               DateTime                @map("due_date")
-    status                AgreementStatus         @default(PENDING) @map("status")
-    user                  User?                   @relation(fields: [userId], references: [id])
-    userId                String?                 @db.Uuid
-    agreementParticipants AgreementParticipants[]
-    obligations           Obligation[]
-    activityLogs          ActivityLog[]
+    id           String                 @id @default(cuid())
+    title        String
+    description  String
+    createdById  String                 @map("created_by_id") @db.Uuid
+    createdBy    User                   @relation("CreatedAgreements", fields: [createdById], references: [id], onDelete: Cascade)
+    createdAt    DateTime               @default(now()) @map("created_at")
+    updatedAt    DateTime               @updatedAt @map("updated_at")
+    dueDate      DateTime               @map("due_date")
+    status       AgreementStatus        @default(PENDING)
+    participants AgreementParticipant[]
+    obligations  Obligation[]
+    activityLogs ActivityLog[]
 
     @@index([createdById])
     @@index([status])
     @@map("agreements")
 }
 
-model AgreementParticipants {
-    id          String         @id @default(cuid())
-    agreementId String
-    userId      String
-    role        Participantole @default(PARTICIPANT)
-    createdAt   DateTime       @default(now()) @map("created_at")
-    updatedAt   DateTime       @updatedAt @map("updated_at")
-    agreement   Agreement      @relation(fields: [agreementId], references: [id], onDelete: Cascade)
-    user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+model AgreementParticipant {
+    id          String          @id @default(cuid())
+    agreementId String          @map("agreement_id")
+    userId      String          @map("user_id") @db.Uuid
+    role        ParticipantRole @default(PARTICIPANT)
+    createdAt   DateTime        @default(now()) @map("created_at")
+    agreement   Agreement       @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+    user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-    @@index([agreementId, userId])
+    @@unique([agreementId, userId])
     @@index([userId])
     @@map("agreement_participants")
 }
@@ -86,13 +82,13 @@ model AgreementParticipants {
 model Obligation {
     id           String           @id @default(cuid())
     agreementId  String           @map("agreement_id")
-    assignedToId String           @map("assigned_to_id")
+    assignedToId String           @map("assigned_to_id") @db.Uuid
     description  String
     status       ObligationStatus @default(PENDING)
     createdAt    DateTime         @default(now()) @map("created_at")
     updatedAt    DateTime         @updatedAt @map("updated_at")
     agreement    Agreement        @relation(fields: [agreementId], references: [id], onDelete: Cascade)
-    assignedTo   User             @relation(fields: [assignedToId], references: [id], onDelete: Cascade)
+    assignedTo   User             @relation("AssignedObligations", fields: [assignedToId], references: [id], onDelete: Cascade)
 
     @@index([agreementId])
     @@index([assignedToId])
@@ -103,13 +99,12 @@ model ActivityLog {
     id          String         @id @default(cuid())
     agreementId String         @map("agreement_id")
     action      ActivityAction
-    userId      String         @map("user_id")
+    userId      String         @map("user_id") @db.Uuid
     details     String?
     timestamp   DateTime       @default(now())
     agreement   Agreement      @relation(fields: [agreementId], references: [id], onDelete: Cascade)
     user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-    @@index([agreementId])
-    @@index([userId])
+    @@index([agreementId, timestamp])
     @@map("activity_logs")
 }
