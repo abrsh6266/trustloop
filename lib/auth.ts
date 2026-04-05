@@ -3,9 +3,9 @@ import { User as SupabaseUser } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "./supabase/server";
 import prisma from "./prisma";
 
-export async function requestAuthenticatedUser() {
+export async function requireAuthenticatedUser() {
   const supabase = createServerSupabaseClient();
-  const { data: user } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
     throw new AppError(401, "You need to be signed in to continue.");

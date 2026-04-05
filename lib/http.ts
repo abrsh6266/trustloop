@@ -9,7 +9,7 @@ export class AppError extends Error {
   }
 }
 
-export function handleROuteError(error: unknown) {
+export function handleRouteError(error: unknown) {
   if (error instanceof AppError) {
     return NextResponse.json(
       { message: error.message },
