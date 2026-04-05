@@ -1,4 +1,5 @@
 import {
+  AgreementDetailDto,
   AgreementsResponseDto,
   AgreementStatus,
   AgreementSummaryDto,
@@ -9,7 +10,7 @@ import {
 } from "@/features/agreements/types";
 import prisma from "@/lib/prisma";
 
-function serialNumber(user: {
+function serializeUser(user: {
   id: string;
   name: string | null;
   email: string;
@@ -62,7 +63,7 @@ function serializeAgreementSummary(agreement: {
     participants: agreement.participants.map((participant) => ({
       id: participant.id,
       role: participant.role,
-      user: serialNumber(participant.user),
+      user: serializeUser(participant.user),
     })),
     obligationsCount: agreement.obligations.length,
     completedObligationsCount,
@@ -173,5 +174,112 @@ export async function listAgreementsForUser(
         : 0,
       viewerTrustScore: Number((viewer?.trustScore ?? 100).toFixed(1)),
     },
+  };
+}
+
+export async function getAgreementById(
+  agreementId: string,
+  userId: string,
+): Promise<AgreementDetailDto> {
+  const membership = await prisma.agreementParticipant.findUnique({
+    where: {
+      agreementId_userId: {
+        agreementId,
+        userId,
+      },
+    },
+  });
+  if (!membership) {
+    throw new Error("Agreement not found");
+  }
+
+  const agreement = await prisma.agreement.findUnique({
+    where: { id: agreementId },
+    include: {
+      createdBy: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          trustScore: true,
+        },
+      },
+      participants: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              trustScore: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "asc",
+        },
+      },
+      obligations: {
+        include: {
+          assignedTo: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              trustScore: true,
+            },
+          },
+        },
+        orderBy: [
+          {
+            status: "asc",
+          },
+          {
+            createdAt: "asc",
+          },
+        ],
+      },
+      activityLogs: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              trustScore: true,
+            },
+          },
+        },
+        orderBy: {
+          timestamp: "desc",
+        },
+      },
+    },
+  });
+
+  if (!agreement) {
+    throw new Error("Agreement not found");
+  }
+
+  const summary = serializeAgreementSummary(agreement);
+
+  return {
+    ...summary,
+    creator: serializeUser(agreement.createdBy),
+    obligations: agreement.obligations.map((obligation) => ({
+      id: obligation.id,
+      description: obligation.description,
+      status: obligation.status,
+      createdAt: obligation.createdAt.toISOString(),
+      updatedAt: obligation.updatedAt.toISOString(),
+      assignedTo: serializeUser(obligation.assignedTo),
+    })),
+    activity: agreement.activityLogs.map((log) => ({
+      id: log.id,
+      action: log.action,
+      details: log.details,
+      timestamp: log.timestamp.toISOString(),
+      user: serializeUser(log.user),
+    })),
   };
 }
