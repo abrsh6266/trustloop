@@ -6,4 +6,6 @@ import { useAgreementDetail } from "../api";
 export function AgreeementDetailView({ agreementId }: { agreementId: string }) {
   const { user } = useAuth();
   const agreementQuery = useAgreementDetail(agreementId);
+
+  
 }
