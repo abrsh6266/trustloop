@@ -7,7 +7,7 @@ export type DashboardFilter = "ALL" | AgreementStatus;
 export interface UserSnippet {
   id: string;
   email: string;
-  name: string | null;
+  name: string;
   trustScore: number;
 }
 
